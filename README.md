@@ -1,11 +1,11 @@
 # Spectral Memory — Hermes Agent Plugin
 
-Persistent structured memory for Hermes Agent. 20 labeled facts, 512 tokens, survives context compression.
+Persistent structured memory for Hermes Agent.
 
 ## Install
 
 ```bash
-hermes plugins install jeannemtl/spectral-memory-plugin
+hermes plugins install jeannemtl/spectral-memory-plugin7
 hermes memory setup
 ```
 

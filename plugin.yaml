@@ -1,6 +1,5 @@
 name: spectral_memory
 version: 1.0.0
-description: "Spectral Memory — frequency-encoded structured memory. 20 facts in 512 tokens, lossless under compression."
 pip_dependencies:
   - httpx
 hooks:

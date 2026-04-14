@@ -1,6 +1,6 @@
 ---
 name: spectral-memory
-description: Encode and decode structured facts using Spectral Memory frequency-encoded channels. Store user preferences, project state, task status. Facts survive context compression.
+description: Encode and decode structured facts using Spectral Memory encoded channels. Store user preferences, project state, task status. Facts survive context compression.
 version: 1.0.0
 metadata:
   hermes:
@@ -10,7 +10,7 @@ metadata:
 
 # Spectral Memory
 
-Spectral Memory encodes discrete facts into frequency channels — 20 labeled facts in 512 tokens, lossless under compression.
+Spectral Memory encodes discrete facts into channels.
 
 ## When to use
 
