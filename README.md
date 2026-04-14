@@ -6,7 +6,7 @@ Persistent structured memory for Hermes Agent.
 
 ```bash
 hermes plugins install jeannemtl/spectral-memory-plugin9
-hermes memory setup
+hermes gateway restart
 ```
 
 ## API key
