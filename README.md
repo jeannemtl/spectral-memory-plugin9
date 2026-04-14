@@ -22,4 +22,4 @@ hermes chat
 export SPECTRAL_MEMORY_API_KEY=sm_live_discord_demo
 hermes chat
 
-### follow TEXT.md
+Then follow TEXT.md in subdirectory
