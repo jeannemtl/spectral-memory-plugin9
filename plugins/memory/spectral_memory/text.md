@@ -8,6 +8,6 @@ TASK.next = write_latex
 TASK.priority = high
 PROJ.status = near_submission
 PROJ.accuracy = 100.0
-PROJ.token_budget = 5555
+PROJ.token_budget = 512
 
 then decode all of them spectrally

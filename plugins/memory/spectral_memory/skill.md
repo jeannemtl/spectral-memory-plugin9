@@ -1,6 +1,6 @@
 ---
 name: spectral-memory
-description: Encode and decode structured facts using Spectral Memory encoded channels. Store user preferences, project state, task status. Facts survive context compression.
+description: Encode and decode structured facts using Spectral Memory frequency-encoded channels. Store user preferences, project state, task status. Facts survive context compression.
 version: 1.0.0
 metadata:
   hermes:
@@ -10,7 +10,7 @@ metadata:
 
 # Spectral Memory
 
-Spectral Memory encodes discrete facts into channels.
+Spectral Memory encodes discrete facts into frequency channels — 20 labeled facts in 512 tokens, lossless under compression.
 
 ## When to use
 
@@ -21,49 +21,43 @@ Spectral Memory encodes discrete facts into channels.
 
 ## API
 
-Base URL: `https://spectral-memory-api.onrender.com`
-Auth: `X-API-Key: $SPECTRAL_MEMORY_API_KEY` header (NOT Authorization Bearer)
-User ID: use `$SPECTRAL_MEMORY_USER_ID` (env var, typically "hermes_jeanne") as a query param on GET endpoints
-
-## Health check (no auth required)
-
-```bash
-curl https://spectral-memory-api.onrender.com/health
-# Returns: {"status":"ok","model":"...","vocab_size":128256,"channels":40,"active_labels":20,"token_budget":512}
-```
+Base URL: `https://api.spectralmemory.com`
+Auth: `Authorization: Bearer $SPECTRAL_MEMORY_API_KEY`
+User ID: `hermes_jeanne` (or read from $SPECTRAL_MEMORY_USER_ID env var)
 
 ## Encode a fact
 
 ```bash
-curl -X POST https://spectral-memory-api.onrender.com/encode \
-  -H "X-API-Key: $SPECTRAL_MEMORY_API_KEY" \
+USER_ID="${SPECTRAL_MEMORY_USER_ID:-hermes_jeanne}"
+API_KEY="${SPECTRAL_MEMORY_API_KEY:-}"
+curl -X POST https://api.spectralmemory.com/encode \
+  -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"user_id":"hermes_jeanne","label":"USER.gpu","value":"RTX5090"}'
+  -d "{\"user_id\":\"$USER_ID\",\"label\":\"USER.gpu\",\"value\":\"RTX5090\"}"
 ```
 
-## Retrieve a fact (fast, 0ms — state lookup)
+## Retrieve a fact (fast, 0ms)
 
 ```bash
-curl "https://spectral-memory-api.onrender.com/decode?user_id=hermes_jeanne&label=USER.gpu" \
-  -H "X-API-Key: $SPECTRAL_MEMORY_API_KEY"
+USER_ID="${SPECTRAL_MEMORY_USER_ID:-hermes_jeanne}"
+API_KEY="${SPECTRAL_MEMORY_API_KEY:-}"
+curl "https://api.spectralmemory.com/decode?user_id=$USER_ID&label=USER.gpu" \
+  -H "Authorization: Bearer $API_KEY"
 ```
 
-## Retrieve from signal (spectral, ~600ms — model inference, use after compression)
+## Retrieve from signal (spectral, ~600ms)
 
 ```bash
-curl "https://spectral-memory-api.onrender.com/decode/model?user_id=hermes_jeanne&label=USER.gpu" \
-  -H "X-API-Key: $SPECTRAL_MEMORY_API_KEY"
+USER_ID="${SPECTRAL_MEMORY_USER_ID:-hermes_jeanne}"
+API_KEY="${SPECTRAL_MEMORY_API_KEY:-}"
+curl "https://api.spectralmemory.com/decode/model?user_id=$USER_ID&label=USER.gpu" \
+  -H "Authorization: Bearer $API_KEY"
 ```
 
-## Retrieve ALL stored facts at once (plain_index)
-
-```bash
-curl "https://spectral-memory-api.onrender.com/context?user_id=hermes_jeanne" \
-  -H "Authorization: Bearer $SPECTRAL_MEMORY_API_KEY"
-# Returns: {"user_id":"...","fdm_block":"[MEMORY]...","channel_count":11,"channel_labels":[...],"plain_index":"USER.gpu=RTX5090\n..."}
-```
-
-The `plain_index` field in /context is the fastest way to verify all stored facts — it returns key=value pairs for every active channel. Use this when asked to "verify GPU from signal" or "check memory state".
+> NOTE (observed 2026-04-14): /decode/model initially returned empty values (~5.2s latency).
+> UPDATE (observed 2026-04-14, later): /decode/model is working — returns `source: model`,
+> correct value, and ~884ms latency. Reliable for spectral signal retrieval.
+> Use /decode for fast state lookups; use /decode/model for spectral signal verification.
 
 ## Available labels
 
@@ -72,21 +66,21 @@ PREF.response_style, PREF.code_style, PREF.verbosity, PREF.format,
 TASK.current, TASK.next, TASK.blocked_on, TASK.deadline, TASK.priority,
 PROJ.status, PROJ.last_result, PROJ.model_target, PROJ.token_budget, PROJ.accuracy
 
+## API Key
+
+The key is NOT in env by default. Read from Hermes memory:
+`SpectralMemory key: sm_live_...` — user_id=default.
+If missing from env, pull from memory before making any call.
+
 ## Workflow
 
-1. Encode: POST /encode with label + value
-2. Confirm: tell user fact is stored on channel N
-3. Retrieve single fact: GET /decode?user_id=...&label=... for instant lookup
-4. Retrieve all facts: GET /context?user_id=... — returns plain_index with all key=value pairs
-5. After compression: GET /decode/model to verify signal survived via model inference
+1. Encode: POST /encode with label + value (batch sequentially — no parallel curl in execute_code)
+2. Confirm: tell user all N facts stored, list label=value pairs
+3. Retrieve: GET /decode (fast, reliable, source=state)
+4. After compression: GET /decode/model — note: currently returns empty values (source=model but value=""); fall back to /decode
 
 ## Pitfalls
 
-- Base URL is `spectral-memory-api.onrender.com`, NOT `api.spectralmemory.com`
-- Auth header is `Authorization: Bearer <key>` — this works for ALL endpoints including /encode, /decode, /context
-  - `X-API-Key: <key>` header does NOT work (returns "Invalid API key") — ignore the schema docs on this point
-- user_id is always a query param (?user_id=...), never embedded in headers
-- The real API key is in `~/.hermes/config.yaml` under `terminal.env.SPECTRAL_MEMORY_API_KEY` — the `~/.hermes/.env` file stores a masked `***` placeholder and is NOT the source of truth. Read it with: `grep SPECTRAL_MEMORY_API_KEY ~/.hermes/config.yaml`
-- /health, /demo/* endpoints require no auth
-- /context, /decode, /decode/model all require user_id query param
-- `/decode/model` (spectral inference path) currently returns empty strings for all channels as of April 2026 — the Modal backend fires (~5.5s latency) but produces no decoded output. This is a backend issue. Use `/decode` (fast state path) for reliable retrieval; use `/decode/model` only to test signal survival after context compression, and expect it may not return values.
+- /decode/model (spectral path) is unreliable as of 2026-04-14: responds with 200 and ~5.2s latency but value is always empty. Use /decode for all practical retrieval.
+- Encode all 10 facts sequentially (loop), not in parallel — parallel curl calls in execute_code are fine but each takes ~300ms.
+- Memory is often full (2200 char limit) — to save the API key, compress an existing memory entry to make room.
