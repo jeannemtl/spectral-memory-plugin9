@@ -10,4 +10,10 @@ PROJ.status = near_submission
 PROJ.accuracy = 100.0
 PROJ.token_budget = 512
 
+
+#### THEN
 then decode all of them spectrally
+
+
+#### OR
+use the spectral-memory skill to decode USER.gpu spectrally from the signal
