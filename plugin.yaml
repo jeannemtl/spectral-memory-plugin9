@@ -1,6 +1,1 @@
-name: spectral_memory
-version: 1.0.0
-pip_dependencies:
-  - httpx
-hooks:
-  - on_session_end
+404: Not Found
